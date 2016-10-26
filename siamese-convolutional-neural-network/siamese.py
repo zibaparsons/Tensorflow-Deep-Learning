@@ -77,97 +77,6 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
     return var
 
 
-def max_pool(x, pool_size, stride, name='max_pooling'):
-    """This is the max pooling layer..
-
-    ## Note1: The padding is of type 'VALID'. For more information please
-    refer to TensorFlow tutorials.
-    ## Note2: Variable scope is useful for sharing the variables.
-
-    Args:
-      x: The input of the layer which most probably in the output of previous Convolution layer.
-      pool_size: The windows size for max pooling operation.
-      stride: stride of the max pooling layer
-
-    Returns:
-      The resulting feature cube.
-    """
-    with tf.variable_scope(name):
-        return tf.nn.max_pool(x, ksize=[1, pool_size, pool_size, 1], strides=[1, stride, stride, 1], padding='VALID')
-
-
-#
-def conv_relu(input, kernel_shape, bias_shape, name='conv_relu'):
-    """This is the Convolutional layer..
-
-        ## Note 1: The padding is of type 'VALID'. For more information please
-        refer to TensorFlow tutorials.
-        ## Note 2: Variable scope is useful for sharing the variables.
-        ## Note 3: The weight_decay can be used for this layer.
-        ## Note 4: Saving the activation summary for this layer, can be useful.
-        ## Note 5: ReLU activation can be replaced.
-
-        Args:
-          input: The input of the layer.
-          kernel_shape: The kernel windows for scanning.
-          bias_shape: the bias parameter shape.
-
-        Returns:
-          The resulting feature cube.
-        """
-    with tf.variable_scope(name):
-        kernel = _variable_with_weight_decay('weights', kernel_shape,
-                                             stddev=0.01, wd=None)
-        conv = tf.nn.conv2d(input, kernel, [1, 1, 1, 1], padding='VALID')
-        biases = _variable_on_cpu('biases', bias_shape, tf.constant_initializer(0.1))
-        bias = tf.nn.bias_add(conv, biases)
-        conv1 = tf.nn.relu(bias, name=name)
-        _activation_summary(conv1)
-        return conv1, _activation_summary(conv1)
-
-
-def convolution_relu(input, kernel_size, num_outputs, name):
-
-    with tf.variable_scope(name):
-        conv = tf.contrib.layers.convolution2d(input,
-                                                 num_outputs,
-                                                 kernel_size=kernel_size,
-                                                 stride=[1, 1],
-                                                 padding='VALID',
-                                                 activation_fn=tf.nn.relu,
-                                                 normalizer_fn=tf.contrib.layers.batch_norm,
-                                                 normalizer_params=None,
-                                                 weights_initializer=tf.contrib.layers.xavier_initializer(
-                                                     dtype=tf.float32)
-                                                 )
-    _activation_summary(conv)
-    return conv
-
-
-#
-def FC_layer(input, kernel_shape, bias_shape, name="FC_layer"):
-    """This is the Fully-Connected layer.
-
-            ## Note1: ReLU activation can be replaced.
-            ## Note2: tf.reshape(input, [-1, kernel_shape[0]]) is for getting the
-                       proper dimension to be multiplied by the fully connected weight matrix.
-
-            Args:
-              input: The input of the layer which most probably in the output of previous Convolution layer.
-              kernel_shape: The kernel windows for scanning.
-              bias_shape: the bias parameter shape.
-
-            Returns:
-              The feature vector.
-            """
-    with tf.variable_scope(name):
-        weights = tf.get_variable('weights', kernel_shape, tf.float32,
-                                  tf.truncated_normal_initializer(mean=0.0, stddev=0.01))
-        biases = tf.get_variable('biases', bias_shape, tf.float32,
-                                 tf.truncated_normal_initializer(mean=0.01, stddev=0.0))
-        input = tf.reshape(input, [-1, kernel_shape[0]])
-        return tf.nn.relu(tf.matmul(input, weights) + biases)
-
 
 def loss(y, distance, batch_size):
     """With this definition the loss will be calculated.
@@ -225,7 +134,82 @@ def get_batch(start_idx, end_ind, inputs, labels):
     return pair_left_part, pair_right_part, y
 
 
-def Siamese_Structure(X, dropout):
+
+def max_pool(x, pool_size, stride, name='max_pooling'):
+    """This is the max pooling layer..
+
+    ## Note1: The padding is of type 'VALID'. For more information please
+    refer to TensorFlow tutorials.
+    ## Note2: Variable scope is useful for sharing the variables.
+
+    Args:
+      x: The input of the layer which most probably in the output of previous Convolution layer.
+      pool_size: The windows size for max pooling operation.
+      stride: stride of the max pooling layer
+
+    Returns:
+      The resulting feature cube.
+    """
+    with tf.variable_scope(name):
+        return tf.nn.max_pool(x, ksize=[1, pool_size, pool_size, 1], strides=[1, stride, stride, 1], padding='VALID')
+
+
+#
+def convolution_layer(input, kernel_size, num_outputs, activation, dropout_param, name):
+    """
+    This layer is mainly "tf.contrib.layers.convolution2d" layer except for the dropout parameter.
+    :param input: The input to the convolution layer.
+    :param kernel_size: which is a list as [kernel_height, kernel_width].
+    :param num_outputs: The number of output feature maps(filters).
+    :param activation: The nonlinear activation function.
+    :param dropout_param: The dropout parameter which determines the probability that each neuron is kept.
+    :param name: The name which might be useful for reusing the variables.
+
+    :return: The output of the convolutional layer which is of size (?,height,width,num_outputs).
+    """
+    with tf.variable_scope(name):
+        conv = tf.contrib.layers.convolution2d(input,
+                                               num_outputs,
+                                               kernel_size=kernel_size,
+                                               stride=[1, 1],
+                                               padding='VALID',
+                                               activation_fn=activation,
+                                               normalizer_fn=tf.contrib.layers.batch_norm,
+                                               normalizer_params=None,
+                                               weights_initializer=tf.contrib.layers.xavier_initializer(
+                                                   dtype=tf.float32),
+                                               trainable=True
+                                               )
+        conv = tf.nn.dropout(conv, dropout_param)
+    _activation_summary(conv)
+    return conv
+
+
+def fc_layer(input, num_outputs, activation_fn, dropout_param, name):
+    """
+    This layer is mainly "tf.contrib.layers.fully_connected" layer except for the dropout parameter.
+    :param input: Input tensor.
+    :param num_outputs: Number of neurons in the output of the layer.
+    :param activation_fn: The used nonlinear function.
+    :param dropout_param: Dropout parameter which determines the probability of keeping each neuron.
+    :param name: Name for reusing the variables if necessary.
+
+    :return: Output of the layer of size (?,num_outputs)
+    """
+    with tf.variable_scope(name):
+        fc = tf.contrib.layers.fully_connected(input,
+                                               num_outputs,
+                                               activation_fn,
+                                               weights_initializer=tf.contrib.layers.xavier_initializer(
+                                                   dtype=tf.float32),
+                                               trainable=True
+                                               )
+        fc = tf.nn.dropout(fc, dropout_param)
+    _activation_summary(fc)
+    return fc
+
+
+def neural_network(X, dropout_param):
     """This function create each branch os Siamese Architecture.
        Basically there are not two branches. They are the same!!
 
@@ -236,11 +220,29 @@ def Siamese_Structure(X, dropout):
           The whole NN model.
 
         """
-    MODEL = neural_network(X, dropout)
-    return MODEL
+    # Get the output features generated by CNN.
+    CNN_output = CNN_Structure(X, dropout_param)
+
+    # Flatten
+    CNN_output_shape = CNN_output.get_shape()
+    shape = CNN_output_shape.as_list()  # a list: [None, 9, 2]
+    dim = np.prod(shape[1:])  # dim = prod(9,2) = 18
+    CNN_output = tf.reshape(CNN_output, [-1, dim])
+
+    # Fully_Connected layer - 1
+    num_outputs = 2048
+    activation_fn = tf.nn.relu
+    y_f1 = fc_layer(CNN_output, num_outputs, activation_fn, dropout_param, name='fc_1')
+
+    # Fully_Connected layer - 2
+    num_outputs = 1024
+    activation_fn = None
+    y_f2 = fc_layer(y_f1, num_outputs, activation_fn, dropout_param, name='fc_2')
+
+    return y_f2
 
 
-def neural_network(x, dropout):
+def CNN_Structure(x, dropout_param):
     """This is the whole structure of the CNN.
 
        Nore: Although the dropout left untouched, it can be define for the FC layers output.
@@ -260,19 +262,19 @@ def neural_network(x, dropout):
     kernel_height = 3
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
-    relu11 = convolution_relu(x, kernel_size, NumFeatureMaps, name='conv11')
+    activation = tf.nn.relu
+    relu11 = convolution_layer(x, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv11')
 
     # Conv_12 layer
-    # Conv_11 layer
     NumFeatureMaps = 64
     kernel_height = 3
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
-    relu12 = convolution_relu(relu11, kernel_size, NumFeatureMaps, name='conv12')
+    activation = tf.nn.relu
+    relu12 = convolution_layer(relu11, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv12')
 
     # Pool_1 layer
     pool_1 = max_pool(relu12, 2, 2, name='pool_1')
-    pool_1_shape = pool_1.get_shape()
 
     ###########################################################
     ##################### SECTION - 2 #########################
@@ -284,60 +286,42 @@ def neural_network(x, dropout):
     kernel_height = 3
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
-    relu21 = convolution_relu(pool_1,
-                                                         kernel_size, NumFeatureMaps, name='conv21')
+    activation = tf.nn.relu
+    relu21 = convolution_layer(pool_1, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv21')
+
+
     # Conv_22 layer
     NumFeatureMaps = 128
     kernel_height = 3
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
-    relu22 = convolution_relu(relu21,
-                                                         kernel_size, NumFeatureMaps, name='conv22')
+    activation = tf.nn.relu
+    relu22 = convolution_layer(relu21, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv22')
 
     # Pool_2 layer
     pool_2 = max_pool(relu22, 2, 2, name='pool_2')
-    pool_2_shape = pool_2.get_shape()
 
     ###########################################################
     ##################### SECTION - 3 #########################
     ###########################################################
 
     # Conv_31 layer
-    # Number of feature maps
-    # Conv_22 layer
     NumFeatureMaps = 256
     kernel_height = 3
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
-    relu31 = convolution_relu(pool_2,
-                                                         kernel_size, NumFeatureMaps, name='conv31')
+    activation = tf.nn.relu
+    relu31 = convolution_layer(pool_2, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv31')
 
     # Conv_32 layer
     NumFeatureMaps = 256
     kernel_height = 3
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
-    relu32 = convolution_relu(relu31,
-                                                         kernel_size, NumFeatureMaps, name='conv32')
+    activation = tf.nn.relu
+    relu32 = convolution_layer(relu31, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv32')
 
     # Pool_3 layer
     pool_3 = max_pool(relu32, 2, 2, name='pool_3')
-    pool_3_shape = pool_3.get_shape()
 
-    ###########################################################
-    ##################### SECTION - 4 #########################
-    ################# Fully Connected Layes####################
-
-    # Fully_Connected layer - 1
-    shape = pool_3_shape
-    num_input_for_fc_layer = int(shape[1] * shape[2] * shape[3])
-    NumOutput = 2048
-    y_f1 = FC_layer(pool_3, [num_input_for_fc_layer, NumOutput], [NumOutput], name='fc_1')
-
-    # Fully_Connected layer - 2
-    shape = y_f1.get_shape()
-    num_input_for_fc_layer = int(shape[1])
-    NumOutput = 1024
-    y_f2 = FC_layer(pool_3, [num_input_for_fc_layer, NumOutput], [NumOutput], name='fc_2')
-
-    return y_f2
+    return pool_3

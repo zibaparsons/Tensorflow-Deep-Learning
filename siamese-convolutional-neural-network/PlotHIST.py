@@ -24,11 +24,8 @@ def Plot_HIST_Fn(label,distance, phase, status, num_bins = 50):
 
     bins = np.linspace(np.amin(distance), np.amax(distance), num_bins)
     fig = plt.figure()
-    print len(gen_dissimilarity_original),len(imp_dissimilarity_original)
-    print 'gen=',gen_dissimilarity_original[0]
     plt.hist(gen_dissimilarity_original, bins, alpha=0.5, facecolor='blue', normed=False, label='gen_dist_original')
     plt.hist(imp_dissimilarity_original, bins, alpha=0.5, facecolor='red', normed=False, label='imp_dist_original')
-    print 2
     plt.legend(loc='upper right')
     plt.title(phase + '_' + status + '_' + 'OriginalFeatures_Histogram.jpg')
     plt.show()

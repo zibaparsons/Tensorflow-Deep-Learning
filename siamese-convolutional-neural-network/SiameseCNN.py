@@ -69,9 +69,9 @@ with graph.as_default():
 
     # Sharing the same parameter in order to creating the Siamese Architecture.
     with tf.variable_scope("siamese") as scope:
-        model_L = siamese.Siamese_Structure(images_L, dropout_param)
+        model_L = siamese.neural_network(images_L, dropout_param)
         scope.reuse_variables()
-        model_R = siamese.Siamese_Structure(images_R, dropout_param)
+        model_R = siamese.neural_network(images_R, dropout_param)
 
     # Defining the distance metric for the outputs of the network.
     distance = tf.sqrt(tf.reduce_sum(tf.pow(tf.sub(model_L, model_R), 2), 1, keep_dims=True))
@@ -147,7 +147,7 @@ with tf.Session(graph=graph) as sess:
             feature2_te = model_R.eval(feed_dict={images_R: input2_te, dropout_param: 1.0})
 
             avg_loss += loss_value
-            print ("batch %d loss= %f" % (i + 1, loss_value))
+            print("batch %d loss= %f" % (i + 1, loss_value))
         duration = time.time() - start_time
         print(
             'epoch %d  time: %f average_loss %0.5f' % (
