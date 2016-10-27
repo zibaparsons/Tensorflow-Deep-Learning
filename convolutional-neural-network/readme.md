@@ -4,5 +4,7 @@
 
 The aim is to design a simple convolutional Neural Network using `TensorFlow`. The tutorial is aimed to sketch a starup model to the the two follwing:
 
-  1- Define an organization for the network architecture, training and evaluation phases.
-  2- Provides a template framework for constructing larger and more complicated models.
+1. Define an organization for the network architecture, training and evaluation phases.
+2. Provides a template framework for constructing larger and more complicated models.
+
+s
