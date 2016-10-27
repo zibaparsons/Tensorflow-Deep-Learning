@@ -1,6 +1,7 @@
 # Siamese Multi-layer-Perceptron
 
-The code is for implementation of the Siamese architecture using Tensorflow. This implementation contains two identical MLP(multi layer perceptron) followed by a contrastive loss cost function. The system platform has to be chosen as the following image: ![](Images/siamese.png). 
+The code is for implementation of the Siamese architecture using Tensorflow. This implementation contains two identical MLP(multi layer perceptron) followed by a contrastive loss cost function. The system platform has to be chosen as the following image: 
+![](Images/siamese.png) 
 
 The Siamese architecture is used for training a similarity metric from data. The method is used for recognition or verification applications where the number of classes is very large and not known during training, and where the number of
 training samples for a single class is very small and the class is not important. The idea is to learn a function that maps input patterns into a target space with the impostor pairs(pairs which do not belong to the same class) become as separated as possible and genuine pairs(pairs which belong to the same class) become as close as possible using the simple distance metrics.
