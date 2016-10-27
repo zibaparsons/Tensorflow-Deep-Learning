@@ -4,7 +4,7 @@ This repository is dedicated to desing and implement the Siamese architecture us
 `TensorFlow` is the framework used for design and the input data format is `HDF5` however basically the data format can be 
 anything if supported by the `Tensorflow`.
 
-## Introduction
+## Introduction to Siamese Architecture
 
 In the recent years, a great amount of research in the
 computer vision and pattern recognition area has been ded-
@@ -30,6 +30,35 @@ solution compared to the traditional facial texture analysis methods. This archi
 data and later to be used for distinguishing between subjects which have never been seen in the training phase. Another
 advantage is that since the similarity metric will be learned using this architecture, as long as we have enough training
 data (genuine and impostor pairs) the number of training samples per subject does not affect the identification performance and that is an interesting advantage.
+
+## Overview
+
+The aim is to design a siamese convolutional neural network using `TensorFlow`. The tutorial is aimed to sketch a starup model to the the two follwing:
+
+1. Define an organization for the network architecture, training and evaluation phases.
+2. Provides a template framework for constructing larger and more complicated models.
+
+## Model Architecture
+
+Two simple `convolutional layers`(each have max pooling) followed by two `fully-cnnected` layers conisdered. The whole structure is followed by a `contrastive loss` function which is aimed to create a discriminative output subspace.
+
+## Code Organization
+
+The source code is embeded in `code` folder.
+
+| File                  | Explanation   |
+| ----------------------|:-------------:|
+| siamese.py  | The body of the framework which consists of structure and axillary functions |
+| SiameseCNN.py         | The main file which has to be run |
+
+## Input
+
+The input format is `HDF5` for this implemetation but it basically can be anything as long as it satisfies the shape properties. For each `TRAIN` and `TEST` data, there are attributes call `cube` and `label`. The `cube` is the data of the shape `(Number_Samples,height,width,2*Number_Channels)` and the `label` is of the form `(Number_Samples,1)` in which each row has the class label. The reason behind `2*Number_Channels` for the fourth dimension is that the last dimension(fourth one) include the pairs by nature, i.e., [:,:,:,0:Number_Channels] are all left parts of the pairs and [:,:,:,Number_Channels:] are all right parts of the pairs.
+
+## Training
+
+As conventional procedure, updating the gradient is done with batches of the data. Moreover Batch Normalization has been implemented for each convolutional layer. No Batch Normalization is done for the fully-connected layers. For all the convolutional and fully-connected layers, the drop-out has been used with the same parameter however this parameter can be customized for each layer in the code. Traditional GradientDescentOptimizer has been used.
+
 
 ## Architecture and Extracted Fatures
 
