@@ -15,9 +15,9 @@ Two simple `convolutional layers`(each have max pooling) followed by two `fully-
 
 The source code is embeded in `code` folder.
 
-| File          | Explanation   |
-| ------------- |:-------------:|
-| col 3 is      | right-aligned |
-| col 2 is      | centered      |
+| File                | Explanation   |
+| ------------------- |:-------------:|
+| Model_Functions.py  | The body of the framework which consists of structure and axillary functions |
+| classifier.py       | The main file which has to be run |
 
 
