@@ -27,3 +27,11 @@ The input format is `HDF5` for this implemetation but it basically can be anythi
 ## Training
 
 As conventional procedure, updating the gradient is done with batches of the data. Moreover `Batch Normalization` has been implemented for each convolutional layer. No `Batch Normalization` is done for the fully-connected layers. For all the convolutional and fully-connected layers, the `drop-out` has been used with the same parameter however this parameter can be customized for each layer in the code. Traditional `GradientDescentOptimizer` has been used.
+
+### Loss Function
+
+`Cross-entropy` loss function has been chosen for the cost of system. The definition is as follows:
+```
+cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y), reduction_indices=[1]))
+```
+However by considering [TensorFlow official documention](https://www.tensorflow.org/versions/r0.11/tutorials/mnist/beginners/index.html#mnist-for-ml-beginners) it is numerically unstable. Instead the `tf.nn.softmax_cross_entropy_with_logits` on the unnormalized logits (i.e.,  softmax_cross_entropy_with_logits is called on tf.matmul(x, W) + b), this function computes the softmax activation internally which makes it more stable.
