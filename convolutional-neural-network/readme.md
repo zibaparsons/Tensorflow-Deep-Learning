@@ -34,4 +34,6 @@ As conventional procedure, updating the gradient is done with batches of the dat
 ```
 cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y), reduction_indices=[1]))
 ```
-However by considering [TensorFlow official documention](https://www.tensorflow.org/versions/r0.11/tutorials/mnist/beginners/index.html#mnist-for-ml-beginners) it is numerically unstable. Instead the `tf.nn.softmax_cross_entropy_with_logits` on the unnormalized logits (i.e.,  softmax_cross_entropy_with_logits is called on tf.matmul(x, W) + b), this function computes the softmax activation internally which makes it more stable.
+However by considering [TensorFlow official documention](https://www.tensorflow.org/versions/r0.11/tutorials/mnist/beginners/index.html#mnist-for-ml-beginners) it is numerically unstable. The reason can be due to the presence of the `log`. If the output of the network provide a very bad prediction and by normalizing that prediction we get `zero` for `y` value, then the loss goes to infinity and this is unstable.
+
+Instead the `tf.nn.softmax_cross_entropy_with_logits` on the unnormalized logits (i.e.,  softmax_cross_entropy_with_logits is called on tf.matmul(x, W) + b), this function computes the softmax activation internally which makes it more stable. It's good to take a look at the source code of `TensorFlow` for that however there is a traditional idea to overcome this problem which is add an `epsilon` number with the absolute value of `y` and take it as `y`.
