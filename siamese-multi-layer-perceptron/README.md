@@ -1,9 +1,38 @@
-# Introduction
+# Siamese Multi-layer-Perceptron
 
-The code is for implementation of the Siamese architecture using Tensorflow. The input data type is HDF5. This implementation contains two identical MLP(multi layer perceptron) followed by a contrastive loss cost function. The system platform has to be chosen as the following image: ![](Images/siamese.png). 
+The code is for implementation of the Siamese architecture using Tensorflow. This implementation contains two identical MLP(multi layer perceptron) followed by a contrastive loss cost function. The system platform has to be chosen as the following image: ![](Images/siamese.png). 
 
 The Siamese architecture is used for training a similarity metric from data. The method is used for recognition or verification applications where the number of classes is very large and not known during training, and where the number of
 training samples for a single class is very small and the class is not important. The idea is to learn a function that maps input patterns into a target space with the impostor pairs(pairs which do not belong to the same class) become as separated as possible and genuine pairs(pairs which belong to the same class) become as close as possible using the simple distance metrics.
+
+## Overview
+
+The aim is to design a simple siamese multi-layer perceptron using `TensorFlow`. The tutorial is aimed to sketch a starup model to the the two follwing:
+
+1. Define an organization for the network architecture, training and evaluation phases.
+2. Provides a template framework for constructing larger and more complicated models.
+
+## Model Architecture
+
+Three simple `fully-cnnected` layers are included. 
+
+## Code Organization
+
+The source code is embeded in `code` folder.
+
+| File                  | Explanation   |
+| ----------------------|:-------------:|
+| siamese_structure.py  | The body of the framework which consists of structure and axillary functions |
+| SiameseMLP.py         | The main file which has to be run |
+
+## Input
+
+The input format is `HDF5` for this implemetation but it basically can be anything as long as it satisfies the shape properties. For each `TRAIN` and `TEST` data, there are attributes call `cube` and `label`. The `cube` is the data of the shape `(Number_Samples,number_features,Number_Channels)` and the `label` is of the form `(Number_Samples,1)` in which each row has the class label. `Number_Channels` must be `2` because we are dealing with pairs of features.
+
+## Training
+
+As conventional procedure, updating the gradient is done with batches of the data. Moreover `Batch Normalization` has been implemented for each fully-connected layer. For all the fully-connected layers, the `drop-out` has been used with the same parameter however this parameter can be customized for each layer in the code. Traditional `GradientDescentOptimizer` has been used.
+
 
 
 # Example
