@@ -205,16 +205,21 @@ def neural_network(X, dropout_param):
     CNN_output = tf.reshape(CNN_output, [-1, dim])
 
     # Fully_Connected layer - 1
-    num_outputs = 1000
+    num_outputs = 2048
     activation_fn = tf.nn.relu
     y_f1 = fullyconnected_contribute(CNN_output, num_outputs, activation_fn, dropout_param, name='fc_1')
 
-    # Fully_Connected layer - 2
-    num_outputs = 259
-    activation_fn = None
+    # Fully_Connected layer - 1
+    num_outputs = 1024
+    activation_fn = tf.nn.relu
     y_f2 = fullyconnected_contribute(y_f1, num_outputs, activation_fn, dropout_param, name='fc_2')
 
-    return y_f2
+    # Fully_Connected layer - 2
+    num_outputs = 174
+    activation_fn = None
+    y_f3 = fullyconnected_contribute(y_f2, num_outputs, activation_fn, dropout_param, name='fc_3')
+
+    return y_f3
 
 
 def CNN_Structure(x, dropout_param):
@@ -260,4 +265,13 @@ def CNN_Structure(x, dropout_param):
     # Pool_2 layer
     pool_2 = max_pool(relu21, 2, 2, name='pool_2')
 
-    return pool_2
+    # Conv_31 layer
+    # Number of feature maps
+    NumFeatureMaps = 256
+    kernel_height = 3
+    kernel_width = 3
+    kernel_size = [kernel_height, kernel_width]
+    activation = tf.nn.relu
+    relu31 = convolution_contribute(pool_2, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv31')
+
+    return relu31

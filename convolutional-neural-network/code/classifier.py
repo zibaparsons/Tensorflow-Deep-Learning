@@ -5,6 +5,7 @@ import sys
 
 TRAIN_FILE = h5py.File('data/TRAIN.hdf5', 'r')
 TEST_FILE = h5py.File('data/TEST.hdf5', 'r')
+checkpoint_path = 'checkpoints/'
 
 # Extracting the data and labels from HDF5.
 # Pairs and labels have been saved separately in HDF5 files.
@@ -19,7 +20,7 @@ num_samples = X_train.shape[0]
 height = X_train.shape[1]
 width = X_train.shape[2]
 num_channels = X_train.shape[3]
-N_classes = 259
+N_classes = 174
 
 # Reformat the labels from (N,1) to (N,M) which M is the number of classes
 y_test = Reform_Fn(y_test, N_classes)
@@ -36,7 +37,8 @@ label_place = tf.placeholder(tf.float32, shape=([None, N_classes]), name='gt')
 dropout_param = tf.placeholder(tf.float32)
 
 # output of the network
-pred = neural_network(image_place, dropout_param)
+with tf.variable_scope("siamese") as scope:
+    pred = neural_network(image_place, dropout_param)
 
 # Define loss and optimizer
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, label_place))
@@ -48,16 +50,27 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 # Initializing the variables
 init = tf.initialize_all_variables()
+saver = tf.train.Saver()
 
 # Launch the graph
 with tf.Session() as sess:
     sess.run(init)
     num_epoch = 10
 
+    # # Uncomment if you want to restore the model
+    # saver.restore(sess, "checkpoints/model.ckpt")
+    # print("Model restored.")
+
+
     # iterate on epochs
     for epoch in range(num_epoch):
         total_batch = int(num_samples / batch_size)
 
+        # Calculate accuracy for 256 mnist test images
+        print("Testing Accuracy:", \
+              sess.run(accuracy, feed_dict={image_place: X_test,
+                                            label_place: y_test,
+                                            dropout_param: 1.}))
         for i in range(total_batch):
             start_idx = i * batch_size
             end_idx = (i + 1) * batch_size
@@ -73,13 +86,16 @@ with tf.Session() as sess:
             loss, acc = sess.run([cost, accuracy], feed_dict={image_place: batch_x,
                                                               label_place: batch_y,
                                                               dropout_param: 1.})
-            print("batch " + str(i) + ", Minibatch Loss= " + \
+            print("epoch " + str(epoch + 1) + " batch " + str(i) + ", Minibatch Loss= " + \
                   "{:.6f}".format(loss) + ", Training Accuracy= " + \
                   "{:.5f}".format(acc))
-    print("Optimization Finished!")
 
-    # Calculate accuracy for 256 mnist test images
+    # Uncomment to save the model
+    save_path = saver.save(sess, "checkpoints/model.ckpt")
+    print("Model saved in file: %s" % save_path)
+
     print("Testing Accuracy:", \
-        sess.run(accuracy, feed_dict={image_place: X_test,
-                                      label_place: y_test,
-                                      dropout_param: 1.}))
+          sess.run(accuracy, feed_dict={image_place: X_test,
+                                        label_place: y_test,
+                                        dropout_param: 1.}))
+
