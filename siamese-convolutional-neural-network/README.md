@@ -48,7 +48,7 @@ The source code is embeded in `code` folder.
 
 | File                  | Explanation   |
 | ----------------------|:-------------:|
-| siamese.py  | The body of the framework which consists of structure and axillary functions |
+| Siamese_Architecture.py  | The body of the framework which consists of structure and axillary functions |
 | SiameseCNN.py         | The main file which has to be run |
 
 ## Input
