@@ -94,9 +94,9 @@ with tf.Session(graph=graph) as sess:
     num_epoch = 1
     sess.run(init)
 
-    # Uncomment if you want to restore the model
-    saver.restore(sess, "checkpoints/model.ckpt")
-    print("Model restored.")
+    # # Uncomment if you want to restore the model
+    # saver.restore(sess, "checkpoints/model.ckpt")
+    # print("Model restored.")
 
     # Training cycle
     for epoch in range(num_epoch):
