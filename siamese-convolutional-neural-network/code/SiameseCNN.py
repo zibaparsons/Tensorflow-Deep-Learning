@@ -15,7 +15,7 @@ from PlotROC import Plot_ROC_Fn
 from PlotHIST import Plot_HIST_Fn
 from PlotPR import Plot_PR_Fn
 import re
-import siamese
+import Siamese_Architecture
 
 """
 Parameters and input data
@@ -41,16 +41,19 @@ num_channels = X_train.shape[3] / 2
 distance_train_output = np.zeros(y_train.shape)
 distance_test_output = np.zeros(y_test.shape)
 
+
 # Defining the graph of network.
 graph = tf.Graph()
 with graph.as_default():
     # Some variable defining.
-    batch = tf.Variable(0)
+
+    # batch = tf.Variable(0)
     batch_size = 256
-    global_step = tf.Variable(0, trainable=False)
+    # global_step = tf.Variable(0, trainable=False)
+    global_step = 0
 
     # Learning rate policy.
-    starter_learning_rate = 0.001
+    starter_learning_rate = 0.00000001
     num_batches_per_epoch = int(num_samples / batch_size)
     NUM_EPOCHS_PER_DECAY = 1
     decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
@@ -69,25 +72,31 @@ with graph.as_default():
 
     # Sharing the same parameter in order to creating the Siamese Architecture.
     with tf.variable_scope("siamese") as scope:
-        model_L = siamese.neural_network(images_L, dropout_param)
+        model_L = Siamese_Architecture.neural_network(images_L, dropout_param)
         scope.reuse_variables()
-        model_R = siamese.neural_network(images_R, dropout_param)
+        model_R = Siamese_Architecture.neural_network(images_R, dropout_param)
 
     # Defining the distance metric for the outputs of the network.
     distance = tf.sqrt(tf.reduce_sum(tf.pow(tf.sub(model_L, model_R), 2), 1, keep_dims=True))
 
     # CALCULATION OF LOSS
-    loss = siamese.loss(labels, distance, batch_size)
+    loss = Siamese_Architecture.loss(labels, distance, batch_size)
 
     #TODO: choosing different options for optimizer
     # optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
     # optimizer = tf.train.RMSPropOptimizer(0.0001,momentum=0.9,epsilon=1e-6).minimize(loss)
+    init = tf.initialize_all_variables()
+    saver = tf.train.Saver()
 
 # TODO: Launching the graph!
 with tf.Session(graph=graph) as sess:
-    num_epoch = 20
-    tf.initialize_all_variables().run()
+    num_epoch = 1
+    sess.run(init)
+
+    # Uncomment if you want to restore the model
+    saver.restore(sess, "checkpoints/model.ckpt")
+    print("Model restored.")
 
     # Training cycle
     for epoch in range(num_epoch):
@@ -102,8 +111,8 @@ with tf.Session(graph=graph) as sess:
             end_idx = (i + 1) * batch_size
 
             # Fit training using batch data
-            input1, input2, y = siamese.get_batch(start_idx, end_idx, X_train, y_train)
-            input1_te, input2_te, y_te = X_test[:, :, :, 0:num_channels], X_test[:, :, :, num_channels:], y_test
+            input1, input2, y = Siamese_Architecture.get_batch(start_idx, end_idx, X_train, y_train)
+            input1_te, input2_te, y_te = X_test[start_idx:end_idx, :, :, 0:num_channels], X_test[start_idx:end_idx, :, :, num_channels:], y_test
 
             # TODO: Running the session and evaluation of three elements.
             _, loss_value, predict = sess.run([optimizer, loss, distance],
