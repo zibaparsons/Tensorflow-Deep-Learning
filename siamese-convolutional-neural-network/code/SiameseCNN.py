@@ -20,6 +20,7 @@ import Siamese_Architecture
 """
 Parameters and input data
 """
+
 TRAIN_FILE = h5py.File('data/TRAIN.hdf5', 'r')
 TEST_FILE = h5py.File('data/TEST.hdf5', 'r')
 
@@ -30,6 +31,7 @@ X_train = TRAIN_FILE['pairs']
 y_train = TRAIN_FILE['labels']
 X_test = TEST_FILE['pairs']
 y_test = TEST_FILE['labels']
+
 
 # Dimensions
 num_samples = X_train.shape[0]
@@ -53,7 +55,7 @@ with graph.as_default():
     global_step = 0
 
     # Learning rate policy.
-    starter_learning_rate = 0.00000001
+    starter_learning_rate = 0.001
     num_batches_per_epoch = int(num_samples / batch_size)
     NUM_EPOCHS_PER_DECAY = 1
     decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
@@ -94,9 +96,9 @@ with tf.Session(graph=graph) as sess:
     num_epoch = 1
     sess.run(init)
 
-    # # Uncomment if you want to restore the model
-    # saver.restore(sess, "checkpoints/model.ckpt")
-    # print("Model restored.")
+    # Uncomment if you want to restore the model
+    saver.restore(sess, "checkpoints/model.ckpt")
+    print("Model restored.")
 
     # Training cycle
     for epoch in range(num_epoch):
