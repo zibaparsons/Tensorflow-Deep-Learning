@@ -19,6 +19,18 @@ from PlotPR import Plot_PR_Fn
 import re
 
 
+
+
+def _weights_init(name):
+    init = tf.constant(params[name][0])
+    return tf.get_variable('weights', initializer=init)
+
+
+def _biases_init(name):
+    init = tf.constant(params[name][1])
+    return tf.get_variable('biases', initializer=init)
+
+
 def _activation_summary(x):
     """Helper to create summaries for activations.
 
@@ -35,6 +47,14 @@ def _activation_summary(x):
     # tensor_name = re.sub('%s_[0-9]*/' % 'tower', '', x.op.name)
     tf.histogram_summary(x.op.name + '/activations', x)
     tf.scalar_summary(x.op.name + '/sparsity', tf.nn.zero_fraction(x))
+
+
+def standardalize_Fn(X, mean):
+    X[:, :, :, 0] = (X[:, :, :, 0] - mean[0]) / 255.0
+    X[:, :, :, 1] = (X[:, :, :, 1] - mean[1]) / 255.0
+    X[:, :, :, 2] = (X[:, :, :, 2] - mean[2]) / 255.0
+
+    return X
 
 
 # def _variable_on_cpu(name, shape, initializer):
@@ -134,7 +154,6 @@ def get_batch(start_idx, end_ind, inputs, labels):
     return pair_left_part, pair_right_part, y
 
 
-
 def max_pool(x, pool_size, stride, name='max_pooling'):
     """This is the max pooling layer..
 
@@ -167,25 +186,25 @@ def convolution_layer(input, kernel_size, num_outputs, activation, dropout_param
 
     :return: The output of the convolutional layer which is of size (?,height,width,num_outputs).
     """
+
     with tf.variable_scope(name):
+
         conv = tf.contrib.layers.convolution2d(input,
                                                num_outputs,
                                                kernel_size=kernel_size,
                                                stride=[1, 1],
-                                               padding='VALID',
+                                               padding='SAME',
                                                activation_fn=activation,
-                                               normalizer_fn=tf.contrib.layers.batch_norm,
+                                               normalizer_fn=None,
                                                normalizer_params=None,
-                                               weights_initializer=tf.contrib.layers.xavier_initializer(
-                                                   dtype=tf.float32),
                                                trainable=True
                                                )
         conv = tf.nn.dropout(conv, dropout_param)
-    _activation_summary(conv)
-    return conv
+        _activation_summary(conv)
+        return conv
 
 
-def fc_layer(input, num_outputs, activation_fn, dropout_param, name):
+def fc_layer(input, num_outputs, activation_fn, normalizer_fn, dropout_param, name):
     """
     This layer is mainly "tf.contrib.layers.fully_connected" layer except for the dropout parameter.
     :param input: Input tensor.
@@ -197,16 +216,16 @@ def fc_layer(input, num_outputs, activation_fn, dropout_param, name):
     :return: Output of the layer of size (?,num_outputs)
     """
     with tf.variable_scope(name):
+
         fc = tf.contrib.layers.fully_connected(input,
                                                num_outputs,
                                                activation_fn,
-                                               weights_initializer=tf.contrib.layers.xavier_initializer(
-                                                   dtype=tf.float32),
+                                               normalizer_fn,
                                                trainable=True
                                                )
         fc = tf.nn.dropout(fc, dropout_param)
-    _activation_summary(fc)
-    return fc
+        _activation_summary(fc)
+        return fc
 
 
 def neural_network(X, dropout_param):
@@ -232,20 +251,23 @@ def neural_network(X, dropout_param):
     # Fully_Connected layer - 1
     num_outputs = 4096
     activation_fn = tf.nn.relu
+    normalizer_fn = None
     dropout_param = 0.5
-    y_f1 = fc_layer(CNN_output, num_outputs, activation_fn, dropout_param, name='fc_1')
+    y_f1 = fc_layer(CNN_output, num_outputs, activation_fn, normalizer_fn, dropout_param, name='fc6')
 
     # Fully_Connected layer - 2
     num_outputs = 4096
     activation_fn = tf.nn.relu
+    normalizer_fn = None
     dropout_param = 0.5
-    y_f2 = fc_layer(y_f1, num_outputs, activation_fn, dropout_param, name='fc_2')
+    y_f2 = fc_layer(y_f1, num_outputs, activation_fn, normalizer_fn, dropout_param, name='fc7')
 
     # Fully_Connected layer - 2
     num_outputs = 1000
     activation_fn = None
+    normalizer_fn = None
     dropout_param = 1
-    y_f3 = fc_layer(y_f2, num_outputs, activation_fn, dropout_param, name='fc_3')
+    y_f3 = fc_layer(y_f2, num_outputs, activation_fn, normalizer_fn, dropout_param, name='fc8')
 
     return y_f3
 
@@ -272,7 +294,7 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu11 = convolution_layer(x, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv11')
+    relu11 = convolution_layer(x, kernel_size, NumFeatureMaps, activation, dropout_param, name = 'conv1_1')
 
     # Conv_12 layer
     NumFeatureMaps = 64
@@ -280,10 +302,10 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu12 = convolution_layer(relu11, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv12')
+    relu12 = convolution_layer(relu11, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv1_2')
 
     # Pool_1 layer
-    pool_1 = max_pool(relu12, 2, 2, name='pool_1')
+    pool_1 = max_pool(relu12, 2, 2, name='pool1')
 
     ###########################################################
     ##################### SECTION - 2 #########################
@@ -296,8 +318,7 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu21 = convolution_layer(pool_1, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv21')
-
+    relu21 = convolution_layer(pool_1, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv2_1')
 
     # Conv_22 layer
     NumFeatureMaps = 128
@@ -305,10 +326,10 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu22 = convolution_layer(relu21, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv22')
+    relu22 = convolution_layer(relu21, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv2_2')
 
     # Pool_2 layer
-    pool_2 = max_pool(relu22, 2, 2, name='pool_2')
+    pool_2 = max_pool(relu22, 2, 2, name='pool2')
 
     ###########################################################
     ##################### SECTION - 3 #########################
@@ -320,7 +341,7 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu31 = convolution_layer(pool_2, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv31')
+    relu31 = convolution_layer(pool_2, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv3_1')
 
     # Conv_32 layer
     NumFeatureMaps = 256
@@ -328,7 +349,7 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu32 = convolution_layer(relu31, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv32')
+    relu32 = convolution_layer(relu31, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv3_2')
 
     # Conv_33 layer
     NumFeatureMaps = 256
@@ -336,19 +357,19 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu33 = convolution_layer(relu32, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv33')
+    relu33 = convolution_layer(relu32, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv3_3')
 
-    # Conv_34 layer
-    NumFeatureMaps = 256
-    kernel_height = 3
-    kernel_width = 3
-    kernel_size = [kernel_height, kernel_width]
-    activation = tf.nn.relu
-    relu34 = convolution_layer(relu33, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv34')
+    # # Conv_34 layer
+    # NumFeatureMaps = 256
+    # kernel_height = 3
+    # kernel_width = 3
+    # kernel_size = [kernel_height, kernel_width]
+    # activation = tf.nn.relu
+    # relu34 = convolution_layer(relu33, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv3_4')
 
 
     # Pool_3 layer
-    pool_3 = max_pool(relu34, 2, 2, name='pool_3')
+    pool_3 = max_pool(relu33, 2, 2, name='pool3')
 
     ###########################################################
     ##################### SECTION - 4 #########################
@@ -360,7 +381,7 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu41 = convolution_layer(pool_3, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv41')
+    relu41 = convolution_layer(pool_3, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv4_1')
 
     # Conv_42 layer
     NumFeatureMaps = 512
@@ -368,7 +389,7 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu42 = convolution_layer(relu41, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv42')
+    relu42 = convolution_layer(relu41, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv4_2')
 
     # Conv_43 layer
     NumFeatureMaps = 512
@@ -376,18 +397,18 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu43 = convolution_layer(relu42, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv43')
+    relu43 = convolution_layer(relu42, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv4_3')
 
-    # Conv_44 layer
-    NumFeatureMaps = 512
-    kernel_height = 3
-    kernel_width = 3
-    kernel_size = [kernel_height, kernel_width]
-    activation = tf.nn.relu
-    relu44 = convolution_layer(relu43, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv44')
+    # # Conv_44 layer
+    # NumFeatureMaps = 512
+    # kernel_height = 3
+    # kernel_width = 3
+    # kernel_size = [kernel_height, kernel_width]
+    # activation = tf.nn.relu
+    # relu44 = convolution_layer(relu43, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv44')
 
     # Pool_4 layer
-    pool_4 = max_pool(relu44, 2, 2, name='pool_4')
+    pool_4 = max_pool(relu43, 2, 2, name='pool4')
 
     ###########################################################
     ##################### SECTION - 5 #########################
@@ -399,7 +420,7 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu51 = convolution_layer(pool_4, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv51')
+    relu51 = convolution_layer(pool_4, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv5_1')
 
     # Conv_42 layer
     NumFeatureMaps = 512
@@ -407,7 +428,7 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu52 = convolution_layer(relu51, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv52')
+    relu52 = convolution_layer(relu51, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv5_2')
 
     # Conv_43 layer
     NumFeatureMaps = 512
@@ -415,17 +436,17 @@ def CNN_Structure(x, dropout_param):
     kernel_width = 3
     kernel_size = [kernel_height, kernel_width]
     activation = tf.nn.relu
-    relu53 = convolution_layer(relu52, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv53')
+    relu53 = convolution_layer(relu52, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv5_3')
 
-    # Conv_44 layer
-    NumFeatureMaps = 512
-    kernel_height = 3
-    kernel_width = 3
-    kernel_size = [kernel_height, kernel_width]
-    activation = tf.nn.relu
-    relu54 = convolution_layer(relu53, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv54')
+    # # Conv_44 layer
+    # NumFeatureMaps = 512
+    # kernel_height = 3
+    # kernel_width = 3
+    # kernel_size = [kernel_height, kernel_width]
+    # activation = tf.nn.relu
+    # relu54 = convolution_layer(relu53, kernel_size, NumFeatureMaps, activation, dropout_param, name='conv54')
 
     # Pool_4 layer
-    pool_5 = max_pool(relu54, 2, 2, name='pool_5')
+    pool_5 = max_pool(relu53, 2, 2, name='pool5')
 
     return pool_5

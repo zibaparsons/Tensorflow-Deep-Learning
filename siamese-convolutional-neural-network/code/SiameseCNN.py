@@ -16,11 +16,11 @@ from PlotHIST import Plot_HIST_Fn
 from PlotPR import Plot_PR_Fn
 import re
 import Siamese_Architecture
+import cv2
 
 """
 Parameters and input data
 """
-
 TRAIN_FILE = h5py.File('data/TRAIN.hdf5', 'r')
 TEST_FILE = h5py.File('data/TEST.hdf5', 'r')
 
@@ -47,19 +47,19 @@ distance_test_output = np.zeros(y_test.shape)
 # Defining the graph of network.
 graph = tf.Graph()
 with graph.as_default():
-    # Some variable defining.
 
-    # batch = tf.Variable(0)
-    batch_size = 256
+    # The batch size for gradient update.
+    batch_size = 16
     # global_step = tf.Variable(0, trainable=False)
     global_step = 0
+
 
     # Learning rate policy.
     starter_learning_rate = 0.001
     num_batches_per_epoch = int(num_samples / batch_size)
     NUM_EPOCHS_PER_DECAY = 1
     decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
-    LEARNING_RATE_DECAY_FACTOR = 0.1
+    LEARNING_RATE_DECAY_FACTOR = 0.95
     learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, decay_steps,
                                                LEARNING_RATE_DECAY_FACTOR, staircase=True)
 
@@ -78,8 +78,9 @@ with graph.as_default():
         scope.reuse_variables()
         model_R = Siamese_Architecture.neural_network(images_R, dropout_param)
 
+
     # Defining the distance metric for the outputs of the network.
-    distance = tf.sqrt(tf.reduce_sum(tf.pow(tf.sub(model_L, model_R), 2), 1, keep_dims=True))
+    distance = tf.sqrt(tf.reduce_mean(tf.pow(tf.sub(model_L, model_R), 2), 1, keep_dims=True))
 
     # CALCULATION OF LOSS
     loss = Siamese_Architecture.loss(labels, distance, batch_size)
@@ -88,16 +89,54 @@ with graph.as_default():
     # optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
     # optimizer = tf.train.RMSPropOptimizer(0.0001,momentum=0.9,epsilon=1e-6).minimize(loss)
-    init = tf.initialize_all_variables()
+
     saver = tf.train.Saver()
+
 
 # TODO: Launching the graph!
 with tf.Session(graph=graph) as sess:
+
+    # How many iteration on the whole data is prompted by the user?
     num_epoch = 1
+
+    init = tf.initialize_all_variables()
     sess.run(init)
 
+    """
+    *** Uncomment if you want to initialize the weights using numpy.
+    This part is for assigning the numpy weights to the network weights.
+    This is for initialization. In two cases this part should be commented.
+    1- There is no need for initialization with pre-trained weights.
+    2- The network is initialized and the weights are loaded from the restored checkpoint.
+    """
+    # # The initial weights
+    # weights = np.load('weights/vgg16_casia.npy')
+    # initial_params = weights.item()
+
+    # # Assigning weights
+    # vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+    # for var in vars:
+    #     for key in initial_params:
+    #
+    #         if str(key) in str(var.name) and 'weights' in str(var.name):
+    #             sess.run(tf.assign(var, initial_params[str(key)][0]))
+    #             print "{} weights are assigned to {}".format(str(key), str(var.name))
+    #         elif str(key) in str(var.name) and 'biases' in str(var.name):
+    #             sess.run(tf.assign(var, initial_params[str(key)][1]))
+    #             print "{} biases are assigned to {}".format(str(key), str(var.name))
+    #         else:
+    #             print "processed is passed for {} and {}".format(str(key), str(var))
+
+
+    # # Uncomment to save the model
+    # save_path = saver.save(sess, "weights/casia-model.ckpt")
+    # print("Model saved in file: %s" % save_path)
+
+    """
+    For fine-tuning the model which includes weights must be restored.
+    """
     # Uncomment if you want to restore the model
-    saver.restore(sess, "checkpoints/model.ckpt")
+    saver.restore(sess, "weights/casia-model.ckpt")
     print("Model restored.")
 
     # Training cycle
@@ -116,6 +155,15 @@ with tf.Session(graph=graph) as sess:
             input1, input2, y = Siamese_Architecture.get_batch(start_idx, end_idx, X_train, y_train)
             input1_te, input2_te, y_te = X_test[start_idx:end_idx, :, :, 0:num_channels], X_test[start_idx:end_idx, :, :, num_channels:], y_test
 
+            # # Uncomment if you want to standaralize data with specific mean values for each channel.
+            # mean = [148, 110, 105]
+            # print mean
+            # input1 = Siamese_Architecture.standardalize_Fn(input1, mean)
+            # input2 = Siamese_Architecture.standardalize_Fn(input2, mean)
+            # input1_te = Siamese_Architecture.standardalize_Fn(input1_te, mean)
+            # input2_te = Siamese_Architecture.standardalize_Fn(input2_te, mean)
+
+
             # TODO: Running the session and evaluation of three elements.
             _, loss_value, predict = sess.run([optimizer, loss, distance],
                                               feed_dict={images_L: input1, images_R: input2, labels: y,
@@ -131,7 +179,7 @@ with tf.Session(graph=graph) as sess:
 
             # This will be repeated for each epoch but for the moment it is the only way
             # because the test data cannot be fed at once.
-            # The upper limit for test data is less that train data
+            # The upper limit for test data is less that train data.
             if end_idx < X_test.shape[0]:
                 distance_test_evaluation = distance.eval(
                     feed_dict={images_L: X_test[start_idx:end_idx, :, :, 0:num_channels],
@@ -158,11 +206,12 @@ with tf.Session(graph=graph) as sess:
             feature2_te = model_R.eval(feed_dict={images_R: input2_te, dropout_param: 1.0})
 
             avg_loss += loss_value
-            print("batch %d loss= %f" % (i + 1, loss_value))
+            print("batch %d of %d loss= %f" % (i + 1, total_batch, loss_value))
         duration = time.time() - start_time
         print(
             'epoch %d  time: %f average_loss %0.5f' % (
                 epoch + 1, duration, avg_loss / (total_batch)))
+
 
     # TODO: Test model on test samples
     label_test = np.reshape(y_test, (y_test.shape[0], 1))
