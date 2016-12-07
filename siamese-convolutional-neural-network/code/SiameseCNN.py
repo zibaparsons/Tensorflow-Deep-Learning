@@ -21,6 +21,7 @@ import cv2
 """
 Parameters and input data
 """
+
 TRAIN_FILE = h5py.File('data/TRAIN.hdf5', 'r')
 TEST_FILE = h5py.File('data/TEST.hdf5', 'r')
 
@@ -86,11 +87,12 @@ with graph.as_default():
     loss = Siamese_Architecture.loss(labels, distance, batch_size)
 
     #TODO: choosing different options for optimizer
-    # optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
+    # optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
     # optimizer = tf.train.RMSPropOptimizer(0.0001,momentum=0.9,epsilon=1e-6).minimize(loss)
 
     saver = tf.train.Saver()
+
 
 
 # TODO: Launching the graph!
@@ -98,7 +100,6 @@ with tf.Session(graph=graph) as sess:
 
     # How many iteration on the whole data is prompted by the user?
     num_epoch = 1
-
     init = tf.initialize_all_variables()
     sess.run(init)
 
@@ -109,6 +110,7 @@ with tf.Session(graph=graph) as sess:
     1- There is no need for initialization with pre-trained weights.
     2- The network is initialized and the weights are loaded from the restored checkpoint.
     """
+
     # # The initial weights
     # weights = np.load('weights/vgg16_casia.npy')
     # initial_params = weights.item()
@@ -126,17 +128,18 @@ with tf.Session(graph=graph) as sess:
     #             print "{} biases are assigned to {}".format(str(key), str(var.name))
     #         else:
     #             print "processed is passed for {} and {}".format(str(key), str(var))
-
-
+    #
     # # Uncomment to save the model
-    # save_path = saver.save(sess, "weights/casia-model.ckpt")
+    # print("Trying to save the model")
+    # save_path = saver.save(sess, "weights/CASIA-model.ckpt")
     # print("Model saved in file: %s" % save_path)
+    # sys.exit('No need to continue! The model is saved! Please run again with the saved check point.')
 
     """
     For fine-tuning the model which includes weights must be restored.
     """
     # Uncomment if you want to restore the model
-    saver.restore(sess, "weights/casia-model.ckpt")
+    saver.restore(sess, "weights/CASIA-model.ckpt")
     print("Model restored.")
 
     # Training cycle

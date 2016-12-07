@@ -50,52 +50,17 @@ def _activation_summary(x):
 
 
 def standardalize_Fn(X, mean):
+    """
+    Standardalizing data
+    :param X: Input batch
+    :param mean: The specific mean vector.
+    :return: The data in specific range.
+    """
     X[:, :, :, 0] = (X[:, :, :, 0] - mean[0]) / 255.0
     X[:, :, :, 1] = (X[:, :, :, 1] - mean[1]) / 255.0
     X[:, :, :, 2] = (X[:, :, :, 2] - mean[2]) / 255.0
 
     return X
-
-
-# def _variable_on_cpu(name, shape, initializer):
-#     """Helper to create a Variable stored on CPU memory.
-#
-#     Args:
-#       name: name of the variable
-#       shape: list of ints
-#       initializer: initializer for Variable
-#
-#     Returns:
-#       Variable Tensor
-#     """
-#     with tf.device('/cpu:0'):
-#         var = tf.get_variable(name, shape, initializer=initializer)
-#     return var
-#
-#
-# def _variable_with_weight_decay(name, shape, stddev, wd):
-#     """Helper to create an initialized Variable with weight decay.
-#
-#     Note that the Variable is initialized with a truncated normal distribution.
-#     A weight decay is added only if one is specified.
-#
-#     Args:
-#       name: name of the variable
-#       shape: list of ints
-#       stddev: standard deviation of a truncated Gaussian
-#       wd: add L2Loss weight decay multiplied by this float. If None, weight
-#           decay is not added for this Variable.
-#
-#     Returns:
-#       Variable Tensor
-#     """
-#     var = _variable_on_cpu(name, shape,
-#                            tf.truncated_normal_initializer(stddev=stddev))
-#     if wd is not None:
-#         weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
-#         tf.add_to_collection('losses', weight_decay)
-#     return var
-
 
 
 def loss(y, distance, batch_size):
@@ -127,8 +92,10 @@ def loss(y, distance, batch_size):
 
 # Accuracy computation
 def compute_accuracy(prediction, labels):
+    """
+    Navie way of computation
+    """
     return labels[prediction.ravel() < 0.5].mean()
-    # return tf.reduce_mean(labels[prediction.ravel() < 0.5])
 
 
 # Extracting the data and label for each batch.
@@ -195,6 +162,7 @@ def convolution_layer(input, kernel_size, num_outputs, activation, dropout_param
                                                stride=[1, 1],
                                                padding='SAME',
                                                activation_fn=activation,
+                                               weights_initializer=tf.contrib.layers.xavier_initializer(),
                                                normalizer_fn=None,
                                                normalizer_params=None,
                                                trainable=True
@@ -210,6 +178,7 @@ def fc_layer(input, num_outputs, activation_fn, normalizer_fn, dropout_param, na
     :param input: Input tensor.
     :param num_outputs: Number of neurons in the output of the layer.
     :param activation_fn: The used nonlinear function.
+    :param normalizer_fn: Like using batch normalization.
     :param dropout_param: Dropout parameter which determines the probability of keeping each neuron.
     :param name: Name for reusing the variables if necessary.
 
@@ -220,7 +189,8 @@ def fc_layer(input, num_outputs, activation_fn, normalizer_fn, dropout_param, na
         fc = tf.contrib.layers.fully_connected(input,
                                                num_outputs,
                                                activation_fn,
-                                               normalizer_fn,
+                                               weights_initializer=tf.contrib.layers.xavier_initializer(),
+                                               normalizer_fn=normalizer_fn,
                                                trainable=True
                                                )
         fc = tf.nn.dropout(fc, dropout_param)
@@ -257,19 +227,19 @@ def neural_network(X, dropout_param):
 
     # Fully_Connected layer - 2
     num_outputs = 4096
-    activation_fn = tf.nn.relu
+    activation_fn = None
     normalizer_fn = None
     dropout_param = 0.5
     y_f2 = fc_layer(y_f1, num_outputs, activation_fn, normalizer_fn, dropout_param, name='fc7')
 
-    # Fully_Connected layer - 2
-    num_outputs = 1000
-    activation_fn = None
-    normalizer_fn = None
-    dropout_param = 1
-    y_f3 = fc_layer(y_f2, num_outputs, activation_fn, normalizer_fn, dropout_param, name='fc8')
+    # # Fully_Connected layer - 2
+    # num_outputs = 1000
+    # activation_fn = None
+    # normalizer_fn = None
+    # dropout_param = 1
+    # y_f3 = fc_layer(y_f2, num_outputs, activation_fn, normalizer_fn, dropout_param, name='fc8')
 
-    return y_f3
+    return y_f2
 
 
 def CNN_Structure(x, dropout_param):
