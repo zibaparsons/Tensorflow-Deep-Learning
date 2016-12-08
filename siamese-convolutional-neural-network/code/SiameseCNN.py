@@ -22,6 +22,8 @@ import cv2
 Parameters and input data
 """
 
+just_evaluation = True
+
 TRAIN_FILE = h5py.File('data/TRAIN.hdf5', 'r')
 TEST_FILE = h5py.File('data/TEST.hdf5', 'r')
 
@@ -59,7 +61,6 @@ with graph.as_default():
     num_batches_per_epoch = int(num_samples / batch_size)
     NUM_EPOCHS_PER_DECAY = 1
     decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
-    decay_steps = 1
     LEARNING_RATE_DECAY_FACTOR = 0.95
     learning_rate = tf.train.exponential_decay(starter_learning_rate, batch, decay_steps,
                                                LEARNING_RATE_DECAY_FACTOR, staircase=True)
@@ -104,7 +105,7 @@ with tf.Session(graph=graph) as sess:
                                           sess.graph)
 
     # How many iteration on the whole data is prompted by the user?
-    num_epoch = 1
+    num_epoch = 5
     init = tf.initialize_all_variables()
     sess.run(init)
 
@@ -139,13 +140,13 @@ with tf.Session(graph=graph) as sess:
     # save_path = saver.save(sess, "weights/CASIA-model.ckpt")
     # print("Model saved in file: %s" % save_path)
     # sys.exit('No need to continue! The model is saved! Please run again with the saved check point.')
-
+    #
     # """
     # For fine-tuning the model which includes weights must be restored.
     # """
-    # # Uncomment if you want to restore the model
-    # saver.restore(sess, "weights/CASIA-model.ckpt")
-    # print("Model restored.")
+    # Uncomment if you want to restore the model
+    saver.restore(sess, "weights/CASIA-model.ckpt")
+    print("Model restored.")
 
     # Training cycle
     for epoch in range(num_epoch):
@@ -173,11 +174,14 @@ with tf.Session(graph=graph) as sess:
 
 
             # TODO: Running the session and evaluation of three elements.
-            _, loss_value, summary = sess.run([train_step, loss, merged],
-                                              feed_dict={images_L: input1, images_R: input2, labels: y,
-                                                         dropout_param: 0.9})
-
-            train_writer.add_summary(summary, i)
+            if just_evaluation:
+                print "Only the evaluation will be performed!"
+            else:
+                _, loss_value, summary = sess.run([train_step, loss, merged],
+                                                  feed_dict={images_L: input1, images_R: input2, labels: y,
+                                                             dropout_param: 0.9})
+                # Writing the summary of the tensorboard.
+                train_writer.add_summary(summary, i)
 
             # This will be repeated for each epoch but for the moment it is the only way
             # because the training data cannot be fed at once.
@@ -214,13 +218,19 @@ with tf.Session(graph=graph) as sess:
             # Test output features per whole test set
             feature1_te = model_L.eval(feed_dict={images_L: input1_te, dropout_param: 1.0})
             feature2_te = model_R.eval(feed_dict={images_R: input2_te, dropout_param: 1.0})
+            if just_evaluation:
+                print("No loss value calculation is done for batch %d!" % i )
+            else:
+                avg_loss += loss_value
+                print("batch %d of %d loss= %f" % (i + 1, total_batch, loss_value))
 
-            avg_loss += loss_value
-            print("batch %d of %d loss= %f" % (i + 1, total_batch, loss_value))
         duration = time.time() - start_time
-        print(
-            'epoch %d  time: %f average_loss %0.5f' % (
-                epoch + 1, duration, avg_loss / (total_batch)))
+        if just_evaluation:
+            print "No total loss!"
+        else:
+            print(
+                'epoch %d  time: %f average_loss %0.5f' % (
+                    epoch + 1, duration, avg_loss / (total_batch)))
 
 
     # TODO: Test model on test samples
