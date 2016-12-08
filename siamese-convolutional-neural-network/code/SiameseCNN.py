@@ -51,8 +51,7 @@ with graph.as_default():
 
     # The batch size for gradient update.
     batch_size = 16
-    # global_step = tf.Variable(0, trainable=False)
-    global_step = 0
+    batch = tf.Variable(0, trainable=False)
 
 
     # Learning rate policy.
@@ -60,8 +59,9 @@ with graph.as_default():
     num_batches_per_epoch = int(num_samples / batch_size)
     NUM_EPOCHS_PER_DECAY = 1
     decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
+    decay_steps = 1
     LEARNING_RATE_DECAY_FACTOR = 0.95
-    learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, decay_steps,
+    learning_rate = tf.train.exponential_decay(starter_learning_rate, batch, decay_steps,
                                                LEARNING_RATE_DECAY_FACTOR, staircase=True)
 
     # Adding the larning rate to summary.
@@ -87,16 +87,21 @@ with graph.as_default():
     loss = Siamese_Architecture.loss(labels, distance, batch_size)
 
     #TODO: choosing different options for optimizer
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
+    train_step = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss, global_step=batch)
     # optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
     # optimizer = tf.train.RMSPropOptimizer(0.0001,momentum=0.9,epsilon=1e-6).minimize(loss)
 
+    # Create the saver.
     saver = tf.train.Saver()
+    merged = tf.merge_all_summaries()
 
 
 
 # TODO: Launching the graph!
 with tf.Session(graph=graph) as sess:
+
+    train_writer = tf.train.SummaryWriter('/home/sina/train',
+                                          sess.graph)
 
     # How many iteration on the whole data is prompted by the user?
     num_epoch = 1
@@ -114,7 +119,7 @@ with tf.Session(graph=graph) as sess:
     # # The initial weights
     # weights = np.load('weights/vgg16_casia.npy')
     # initial_params = weights.item()
-
+    #
     # # Assigning weights
     # vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
     # for var in vars:
@@ -135,12 +140,12 @@ with tf.Session(graph=graph) as sess:
     # print("Model saved in file: %s" % save_path)
     # sys.exit('No need to continue! The model is saved! Please run again with the saved check point.')
 
-    """
-    For fine-tuning the model which includes weights must be restored.
-    """
-    # Uncomment if you want to restore the model
-    saver.restore(sess, "weights/CASIA-model.ckpt")
-    print("Model restored.")
+    # """
+    # For fine-tuning the model which includes weights must be restored.
+    # """
+    # # Uncomment if you want to restore the model
+    # saver.restore(sess, "weights/CASIA-model.ckpt")
+    # print("Model restored.")
 
     # Training cycle
     for epoch in range(num_epoch):
@@ -158,7 +163,7 @@ with tf.Session(graph=graph) as sess:
             input1, input2, y = Siamese_Architecture.get_batch(start_idx, end_idx, X_train, y_train)
             input1_te, input2_te, y_te = X_test[start_idx:end_idx, :, :, 0:num_channels], X_test[start_idx:end_idx, :, :, num_channels:], y_test
 
-            # # Uncomment if you want to standaralize data with specific mean values for each channel.
+            # # Uncomment if you want to standardalize data with specific mean values for each channel.
             # mean = [148, 110, 105]
             # print mean
             # input1 = Siamese_Architecture.standardalize_Fn(input1, mean)
@@ -168,9 +173,11 @@ with tf.Session(graph=graph) as sess:
 
 
             # TODO: Running the session and evaluation of three elements.
-            _, loss_value, predict = sess.run([optimizer, loss, distance],
+            _, loss_value, summary = sess.run([train_step, loss, merged],
                                               feed_dict={images_L: input1, images_R: input2, labels: y,
                                                          dropout_param: 0.9})
+
+            train_writer.add_summary(summary, i)
 
             # This will be repeated for each epoch but for the moment it is the only way
             # because the training data cannot be fed at once.
