@@ -1,4 +1,4 @@
-# Siamese Architecture Unsing Convolutional Neural Networks
+# Siamese Architecture Using Convolutional Neural Networks
 
 This repository is dedicated to desing and implement the Siamese architecture using the Convolutional Neural Networks. 
 `TensorFlow` is the framework used for design and the input data format is `HDF5` however basically the data format can be 
