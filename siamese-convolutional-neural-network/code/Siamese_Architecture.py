@@ -80,7 +80,7 @@ def loss(y, distance, batch_size):
           The total loss.
         """
 
-    margin = 1
+    margin = 1000
     term_1 = y * tf.square(distance)
     # tmp= tf.mul(y,tf.square(d))
     term_2 = (1 - y) * tf.square(tf.maximum((margin - distance), 0))
@@ -163,7 +163,7 @@ def convolution_layer(input, kernel_size, num_outputs, activation, dropout_param
                                                padding='SAME',
                                                activation_fn=activation,
                                                weights_initializer=tf.contrib.layers.xavier_initializer(),
-                                               normalizer_fn=None,
+                                               normalizer_fn=tf.contrib.layers.batch_norm,
                                                normalizer_params=None,
                                                trainable=True
                                                )
@@ -221,7 +221,7 @@ def neural_network(X, dropout_param):
     # Fully_Connected layer - 1
     num_outputs = 4096
     activation_fn = tf.nn.relu
-    normalizer_fn = None
+    normalizer_fn = tf.contrib.layers.batch_norm
     dropout_param = 0.5
     y_f1 = fc_layer(CNN_output, num_outputs, activation_fn, normalizer_fn, dropout_param, name='fc6')
 
